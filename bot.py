@@ -1,30 +1,27 @@
-import logging
-from telegram import Update, BotCommand
-from telegram.ext import Application, ApplicationBuilder, CommandHandler, ContextTypes
 import asyncio
+from telegram import Update
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
-BOT_TOKEN = "7760025681:AAELVpPgZn9kDbbtiXvgEz11XW_VdVUYC64"
+TOKEN = "7760025681:AAELVpPgZn9kDbbtiXvgEz11XW_VdVUYC64"
 
-logging.basicConfig(level=logging.INFO)
-
-async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("✅ Bot is alive and received your command!")
-
-async def set_commands(app):
-    await app.bot.set_my_commands([BotCommand("start", "Start the bot")])
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("👋 Hello! Bot is working.")
 
 async def main():
-    app = ApplicationBuilder().token(BOT_TOKEN).build()
-    app.add_handler(CommandHandler("start", start_command))
-    await set_commands(app)
+    app = ApplicationBuilder().token(TOKEN).build()
+    app.add_handler(CommandHandler("start", start))
     print("✅ Bot is running and listening for /start")
     await app.run_polling()
 
+# 🚀 This will work even in Railway or async environments
 if __name__ == "__main__":
     try:
-        asyncio.run(main())
+        asyncio.get_event_loop().run_until_complete(main())
     except RuntimeError as e:
-        if "running" in str(e):
-            loop = asyncio.get_event_loop()
-            loop.create_task(main())
-            loop.run_forever()
+        if "event loop is already running" in str(e):
+            # For Railway or other async hosting
+            import nest_asyncio
+            nest_asyncio.apply()
+            asyncio.get_event_loop().run_until_complete(main())
+        else:
+            raise
