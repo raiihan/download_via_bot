@@ -1,5 +1,5 @@
 import logging
-from telegram import Update, BotCommand, InlineKeyboardMarkup, InlineKeyboardButton, InputMediaVideo
+from telegram import Update, BotCommand
 from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, ContextTypes, filters
 
 # === CONFIGURATION ===
@@ -49,7 +49,7 @@ via @{OWNER_USERNAME}
         await update.message.reply_video(video=data['1080'])
 
 async def channel_post_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    print("📩 Received file from channel") # === for temporary check ===
+    print("📩 Received file from channel")  # debug log
     global latest_file_key
     msg = update.channel_post
     if not msg.video:
@@ -73,27 +73,21 @@ async def channel_post_handler(update: Update, context: ContextTypes.DEFAULT_TYP
     logging.info(f"Stored: {key} => 720: {'720' in title}, 1080: {'1080' in title}")
 
 async def set_commands(app):
-    await app.bot.set_my_commands([BotCommand("start", "Start and get the file")])
+    await app.bot.set_my_commands([
+        BotCommand("start", "Start and get the file")
+    ])
 
-# === MAIN ===
-async def main():
-    app = ApplicationBuilder().token(BOT_TOKEN).build()
+# === RUNNING APP ===
+app = ApplicationBuilder().token(BOT_TOKEN).build()
 
-    app.add_handler(CommandHandler("start", start_command))
-    app.add_handler(MessageHandler(filters.Chat(CHANNEL_B_ID) & filters.VIDEO, channel_post_handler))
+app.add_handler(CommandHandler("start", start_command))
+app.add_handler(MessageHandler(filters.Chat(CHANNEL_B_ID) & filters.VIDEO, channel_post_handler))
 
+async def run_bot():
     await set_commands(app)
-    print("Bot is running...")
+    print("✅ Bot is running on Railway...")
     await app.run_polling()
 
-if __name__ == '__main__':
-    import asyncio
-
-    try:
-        asyncio.run(main())
-    except RuntimeError as e:
-        if "already running" in str(e):
-            loop = asyncio.get_event_loop()
-            loop.create_task(main())
-            loop.run_forever()
-
+import asyncio
+asyncio.get_event_loop().create_task(run_bot())
+asyncio.get_event_loop().run_forever()
