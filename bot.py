@@ -1,4 +1,5 @@
 import logging
+import asyncio
 from telegram import Update, BotCommand
 from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, ContextTypes, filters
 
@@ -49,7 +50,7 @@ via @{OWNER_USERNAME}
         await update.message.reply_video(video=data['1080'])
 
 async def channel_post_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    print("📩 Received file from channel")  # debug log
+    print("📩 Received file from channel")  # for debug
     global latest_file_key
     msg = update.channel_post
     if not msg.video:
@@ -77,17 +78,20 @@ async def set_commands(app):
         BotCommand("start", "Start and get the file")
     ])
 
-# === RUNNING APP ===
-app = ApplicationBuilder().token(BOT_TOKEN).build()
+# === MAIN ===
+async def main():
+    app = ApplicationBuilder().token(BOT_TOKEN).build()
 
-app.add_handler(CommandHandler("start", start_command))
-app.add_handler(MessageHandler(filters.Chat(CHANNEL_B_ID) & filters.VIDEO, channel_post_handler))
+    app.add_handler(CommandHandler("start", start_command))
+    app.add_handler(MessageHandler(filters.Chat(CHANNEL_B_ID) & filters.VIDEO, channel_post_handler))
 
-async def run_bot():
     await set_commands(app)
     print("✅ Bot is running on Railway...")
-    await app.run_polling()
+    await app.initialize()
+    await app.start()
+    await app.updater.start_polling()
+    await app.updater.idle()
 
-import asyncio
-asyncio.get_event_loop().create_task(run_bot())
-asyncio.get_event_loop().run_forever()
+# === ENTRYPOINT ===
+if __name__ == '__main__':
+    asyncio.run(main())
