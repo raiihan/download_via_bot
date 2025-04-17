@@ -1,75 +1,60 @@
 import logging
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import (
-    Application, CommandHandler, CallbackQueryHandler,
-    MessageHandler, ContextTypes, filters
-)
+from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
 import aiohttp
-from io import BytesIO
 import os
 
-# Logging
-logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
-)
+# Enable logging
+logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Replace with your bot token and channel ID
+# Bot token and Channel B ID
 TOKEN = '7760025681:AAELVpPgZn9kDbbtiXvgEz11XW_VdVUYC64'
-CHANNEL_ID = -1002676143465  # Must be integer, not string
-BASE_FILE_URL = f"https://api.telegram.org/bot{TOKEN}/getFile?file_id="
+CHANNEL_ID = -1002676143465  # Channel B (Store Room 🏪)
 
-# Start command
+# START HANDLER
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("👋 Hello! Use /search to browse files.")
+    user = update.effective_user
+    args = context.args
 
-# Show fake file selector
-async def search(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    keyboard = [
-        [InlineKeyboardButton("📁 File 1", callback_data='message_id:123')],
-        [InlineKeyboardButton("📁 File 2", callback_data='message_id:456')],
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text("🔎 Please select a file:", reply_markup=reply_markup)
-
-# Handle button clicks
-async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-    data = query.data
-
-    if data.startswith("message_id:"):
-        msg_id = int(data.split(":")[1])
-
-        # Show preparing message
-        preparing = await query.message.reply_text("⏳ Preparing your file...")
-
+    if args:
+        message_id = args[0]
+        status = await update.message.reply_text("Preparing your file...")
         try:
-            file_msg = await context.bot.forward_message(
+            # Forward the message with the file from Channel B
+            sent = await context.bot.copy_message(
                 chat_id=update.effective_chat.id,
                 from_chat_id=CHANNEL_ID,
-                message_id=msg_id
+                message_id=int(message_id)
             )
-            await preparing.delete()
-
+            # Delete the status message
+            await status.delete()
         except Exception as e:
-            logger.error(f"❌ Error: {e}")
-            await preparing.edit_text("⚠️ Sorry, this file is no longer available.")
+            logger.error(f"Error forwarding message: {e}")
+            await status.edit_text("❌ Sorry, this file is no longer available.")
+    else:
+        await update.message.reply_text(f"👋 Hello {user.first_name}! Use /search to browse files.")
 
-# Error fallback for unknown messages
-async def unknown(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("❓ Sorry, I didn’t understand that. Use /search to get started.")
+# SEARCH HANDLER (Dummy button selector)
+async def search(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    keyboard = [
+        [InlineKeyboardButton("File 14", url="https://t.me/NoSourceFileBot?start=14")],
+        [InlineKeyboardButton("File 15", url="https://t.me/NoSourceFileBot?start=15")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    await update.message.reply_text("Choose a file:", reply_markup=reply_markup)
 
-# Setup application
-def main():
-    app = Application.builder().token(TOKEN).build()
+# MAIN FUNCTION
+async def main():
+    application = Application.builder().token(TOKEN).build()
 
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("search", search))
-    app.add_handler(CallbackQueryHandler(button_handler))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, unknown))
+    # Handlers
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("search", search))
 
-    app.run_polling()
+    # Run the bot
+    await application.run_polling()
 
-if __name__ == "__main__":
-    main()
+if __name__ == '__main__':
+    import asyncio
+    asyncio.run(main())
