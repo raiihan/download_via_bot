@@ -1,60 +1,63 @@
-import logging
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes
-import aiohttp
 import os
+import logging
+from telegram import Update
+from telegram.ext import Application, CommandHandler, MessageHandler, CallbackQueryHandler, ContextTypes, filters
 
 # Enable logging
-logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
+logging.basicConfig(
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
+)
 logger = logging.getLogger(__name__)
 
-# Bot token and Channel B ID
+# Bot Token and Channel ID
 TOKEN = '7760025681:AAELVpPgZn9kDbbtiXvgEz11XW_VdVUYC64'
-CHANNEL_ID = -1002676143465  # Channel B (Store Room 🏪)
+CHANNEL_ID = -1002676143465  # Correct signed integer ID
 
-# START HANDLER
+# Start command handler
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.effective_user
     args = context.args
-
     if args:
         message_id = args[0]
-        status = await update.message.reply_text("Preparing your file...")
-        try:
-            # Forward the message with the file from Channel B
-            sent = await context.bot.copy_message(
-                chat_id=update.effective_chat.id,
-                from_chat_id=CHANNEL_ID,
-                message_id=int(message_id)
-            )
-            # Delete the status message
-            await status.delete()
-        except Exception as e:
-            logger.error(f"Error forwarding message: {e}")
-            await status.edit_text("❌ Sorry, this file is no longer available.")
+        await send_file_from_channel(update, context, message_id)
     else:
-        await update.message.reply_text(f"👋 Hello {user.first_name}! Use /search to browse files.")
+        await update.message.reply_text("👋 Hello! Use /search to browse files.")
 
-# SEARCH HANDLER (Dummy button selector)
+# Send file from Channel B
+async def send_file_from_channel(update: Update, context: ContextTypes.DEFAULT_TYPE, message_id: str):
+    try:
+        # Show preparing message
+        status = await update.message.reply_text("📦 Preparing your file...")
+
+        message = await context.bot.forward_message(
+            chat_id=update.effective_chat.id,
+            from_chat_id=CHANNEL_ID,
+            message_id=int(message_id)
+        )
+
+        # Delete preparing message after sending
+        await status.delete()
+
+    except Exception as e:
+        logger.error(f"Error: {e}")
+        await update.message.reply_text("⚠️ Sorry, file not found or has been deleted.")
+
+# Search handler (future)
 async def search(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    keyboard = [
-        [InlineKeyboardButton("File 14", url="https://t.me/NoSourceFileBot?start=14")],
-        [InlineKeyboardButton("File 15", url="https://t.me/NoSourceFileBot?start=15")]
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text("Choose a file:", reply_markup=reply_markup)
+    await update.message.reply_text("🔎 Search feature coming soon!")
 
-# MAIN FUNCTION
-async def main():
-    application = Application.builder().token(TOKEN).build()
+# Error handler
+async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
+    logger.error(f"Update: {update} caused error: {context.error}")
 
-    # Handlers
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("search", search))
+# Run the bot
+def main():
+    app = Application.builder().token(TOKEN).build()
 
-    # Run the bot
-    await application.run_polling()
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("search", search))
+    app.add_error_handler(error_handler)
 
-if __name__ == '__main__':
-    import asyncio
-    asyncio.run(main())
+    app.run_polling()
+
+if __name__ == "__main__":
+    main()
