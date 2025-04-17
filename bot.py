@@ -50,7 +50,10 @@ via @{OWNER_USERNAME}
         await update.message.reply_video(video=data['1080'])
 
 async def channel_post_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    print("📩 Received file from channel")  # for debug
+    print("📩 Received file from channel")  # Log for test
+    msg = update.channel_post
+    print(f"📢 New Channel Message: {msg.caption}")  # Add this line
+
     global latest_file_key
     msg = update.channel_post
     if not msg.video:
