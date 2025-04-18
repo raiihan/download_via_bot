@@ -8,7 +8,6 @@ from telegram.ext import (
     CommandHandler,
     ContextTypes,
     MessageHandler,
-    CallbackQueryHandler,
     filters,
 )
 
@@ -18,31 +17,34 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Bot Token and Channel ID
+# Config
 TOKEN = os.getenv("BOT_TOKEN")
-CHANNEL_ID = int(os.getenv("CHANNEL_ID"))
-WEBHOOK_BASE = os.getenv("WEBHOOK_BASE")
+CHANNEL_ID = int(os.getenv("CHANNEL_ID", "-1002676143465"))
+WEBHOOK_URL = os.getenv("WEBHOOK_BASE")
 
-# Create FastAPI app
+# FastAPI app
 app = FastAPI()
 
-# Global app variable for Telegram bot
-telegram_app: Application = None
+# Global bot application
+telegram_app = None
 
-# Start command handler
+
+# --- Bot Command Handlers ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     args = context.args
     if args:
-        message_id = args[0]
-        await send_file_from_channel(update, context, message_id)
+        await send_file_from_channel(update, context, args[0])
     else:
-        await update.message.reply_text("\ud83d\udc4b Hello! Use /search to browse files.")
+        await update.message.reply_text("👋 Hello! Use /search to browse files.")
 
-# Send file from Channel B
+
+async def search(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("🔎 Search feature coming soon!")
+
+
 async def send_file_from_channel(update: Update, context: ContextTypes.DEFAULT_TYPE, message_id: str):
     try:
-        # Show preparing message
-        status = await update.message.reply_text("\ud83d\udce6 Preparing your file...")
+        status = await update.message.reply_text("📦 Preparing your file...")
         await context.bot.forward_message(
             chat_id=update.effective_chat.id,
             from_chat_id=CHANNEL_ID,
@@ -50,29 +52,26 @@ async def send_file_from_channel(update: Update, context: ContextTypes.DEFAULT_T
         )
         await status.delete()
     except Exception as e:
-        logger.error(f"Error: {e}")
-        await update.message.reply_text("\u26a0\ufe0f Sorry, file not found or has been deleted.")
+        logger.error(f"Error sending file: {e}")
+        await update.message.reply_text("⚠️ File not found or deleted.")
 
-# Search command handler
-async def search(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("\ud83d\udd0e Search feature coming soon!")
 
-# Telegram webhook endpoint
+# --- Webhook Endpoint ---
 @app.post("/webhook")
-async def webhook(request: Request):
+async def telegram_webhook(request: Request):
+    global telegram_app
     try:
         data = await request.json()
-        print(f"Received data: {data}")
         update = Update.de_json(data, telegram_app.bot)
         await telegram_app.process_update(update)
-        return {"status": "ok"}
     except Exception as e:
-        print(f"Error: {e}")
-        return {"status": "error", "message": str(e)}
+        logger.error(f"Webhook error: {e}")
+    return {"status": "ok"}
 
 
-# Set up Telegram bot
-async def setup_bot():
+# --- Startup Tasks ---
+@app.on_event("startup")
+async def on_startup():
     global telegram_app
     telegram_app = Application.builder().token(TOKEN).build()
     telegram_app.add_handler(CommandHandler("start", start))
@@ -80,20 +79,14 @@ async def setup_bot():
     await telegram_app.initialize()
     await telegram_app.start()
 
-    webhook_url = os.getenv("WEBHOOK_URL", "").strip()
-    if webhook_url:
-        await telegram_app.bot.set_webhook(f"{webhook_url}/webhook")
-        logger.info(f"Webhook set to {webhook_url}/webhook")
+    if WEBHOOK_URL:
+        await telegram_app.bot.set_webhook(f"{WEBHOOK_URL}/webhook")
+        logger.info(f"Webhook set to {WEBHOOK_URL}/webhook")
     else:
-        logger.warning("⚠️ WEBHOOK_URL not set in environment — skipping webhook setup.")
+        logger.warning("❌ WEBHOOK_BASE not set — webhook not configured!")
 
 
-# Run setup during startup
-@app.on_event("startup")
-async def on_startup():
-    await setup_bot()
-
-# Shutdown Telegram bot
+# --- Shutdown ---
 @app.on_event("shutdown")
 async def on_shutdown():
     await telegram_app.stop()
