@@ -72,10 +72,11 @@ async def setup_bot():
     telegram_app.add_handler(CommandHandler("search", search))
     await telegram_app.initialize()
     await telegram_app.start()
-    webhook_url = os.getenv("WEBHOOK_URL")
-    if webhook_url:
-        await telegram_app.bot.set_webhook(f"{webhook_url}/webhook")
-        logger.info(f"Webhook set to {webhook_url}/webhook")
+    webhook_url = os.getenv("WEBHOOK_BASE")  # Changed from WEBHOOK_URL
+if webhook_url:
+    await telegram_app.bot.set_webhook(f"{webhook_url}/webhook")
+    logger.info(f"Webhook set to {webhook_url}/webhook")
+
 
 # Run setup during startup
 @app.on_event("startup")
