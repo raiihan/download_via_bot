@@ -60,10 +60,16 @@ async def search(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # Telegram webhook endpoint
 @app.post("/webhook")
 async def webhook(request: Request):
-    data = await request.json()
-    update = Update.de_json(data, telegram_app.bot)
-    await telegram_app.process_update(update)
-    return {"status": "ok"}
+    try:
+        data = await request.json()
+        print(f"Received data: {data}")
+        update = Update.de_json(data, telegram_app.bot)
+        await telegram_app.process_update(update)
+        return {"status": "ok"}
+    except Exception as e:
+        print(f"Error: {e}")
+        return {"status": "error", "message": str(e)}
+
 
 # Set up Telegram bot
 async def setup_bot():
