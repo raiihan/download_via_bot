@@ -19,8 +19,9 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Bot Token and Channel ID
-TOKEN = os.getenv("BOT_TOKEN", "7760025681:AAELVpPgZn9kDbbtiXvgEz11XW_VdVUYC64")
-CHANNEL_ID = int(os.getenv("CHANNEL_ID", "-1002676143465"))
+TOKEN = os.getenv("BOT_TOKEN")
+CHANNEL_ID = int(os.getenv("CHANNEL_ID"))
+WEBHOOK_BASE = os.getenv("WEBHOOK_BASE")
 
 # Create FastAPI app
 app = FastAPI()
@@ -35,13 +36,13 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         message_id = args[0]
         await send_file_from_channel(update, context, message_id)
     else:
-        await update.message.reply_text("👋 Hello! Use /search to browse files.")
+        await update.message.reply_text("\ud83d\udc4b Hello! Use /search to browse files.")
 
 # Send file from Channel B
 async def send_file_from_channel(update: Update, context: ContextTypes.DEFAULT_TYPE, message_id: str):
     try:
         # Show preparing message
-        status = await update.message.reply_text("📦 Preparing your file...")
+        status = await update.message.reply_text("\ud83d\udce6 Preparing your file...")
         await context.bot.forward_message(
             chat_id=update.effective_chat.id,
             from_chat_id=CHANNEL_ID,
@@ -50,11 +51,11 @@ async def send_file_from_channel(update: Update, context: ContextTypes.DEFAULT_T
         await status.delete()
     except Exception as e:
         logger.error(f"Error: {e}")
-        await update.message.reply_text("⚠️ Sorry, file not found or has been deleted.")
+        await update.message.reply_text("\u26a0\ufe0f Sorry, file not found or has been deleted.")
 
 # Search command handler
 async def search(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("🔎 Search feature coming soon!")
+    await update.message.reply_text("\ud83d\udd0e Search feature coming soon!")
 
 # Telegram webhook endpoint
 @app.post("/webhook")
@@ -70,15 +71,15 @@ async def setup_bot():
     telegram_app = Application.builder().token(TOKEN).build()
     telegram_app.add_handler(CommandHandler("start", start))
     telegram_app.add_handler(CommandHandler("search", search))
+
     await telegram_app.initialize()
     await telegram_app.start()
-webhook_url = os.getenv("WEBHOOK_BASE", "").strip()
-if webhook_url:
-    await telegram_app.bot.set_webhook(f"{webhook_url}/webhook")
-    logger.info(f"Webhook set to {webhook_url}/webhook")
-else:
-    logger.warning("⚠️ WEBHOOK_BASE not set in environment — skipping webhook setup.")
 
+    if WEBHOOK_BASE:
+        await telegram_app.bot.set_webhook(f"{WEBHOOK_BASE}/webhook")
+        logger.info(f"Webhook set to {WEBHOOK_BASE}/webhook")
+    else:
+        logger.warning("\u26a0\ufe0f WEBHOOK_BASE not set in environment variables.")
 
 # Run setup during startup
 @app.on_event("startup")
